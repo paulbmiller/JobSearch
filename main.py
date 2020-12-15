@@ -187,14 +187,6 @@ if __name__ == '__main__':
         name text NOT NULL
     ); """
     
-    create_responses = """CREATE TABLE IF NOT EXISTS responses (
-        id integer PRIMARY KEY NOT NULL,
-        application_id integer,
-        date text NOT NULL,
-        description text NOT NULL,
-        FOREIGN KEY (application_id) REFERENCES applications(id)
-    ); """
-    
     create_event_types = """CREATE TABLE IF NOT EXISTS event_types (
         id integer PRIMARY KEY NOT NULL,
         description text NOT NULL
@@ -216,7 +208,6 @@ if __name__ == '__main__':
     
     create_table(conn, create_applications)
     create_table(conn, create_companies)
-    create_table(conn, create_responses)
     create_table(conn, create_event_types)
     create_table(conn, create_events)
     create_table(conn, create_status)
