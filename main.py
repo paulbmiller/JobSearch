@@ -129,7 +129,7 @@ def add_event(event_type_id, application_id, date, db=r"jobsearch.db"):
     conn = create_connection(db)
     c = conn.cursor()
     
-    c.execute("""INSERT INTO event (application_id, date, event_type)
+    c.execute("""INSERT INTO events (application_id, date, event_type)
               VALUES ({}, '{}', {})""".format(application_id,
               date, event_type_id))
     
@@ -160,6 +160,20 @@ def add_offline_test(application_id, date, db=r"jobsearch.db"):
 def add_rejection(application_id, date, db=r"jobsearch.db"):
     add_event(6, application_id, date, db)
     set_application_status(application_id, 3, db)
+
+
+def exec_sql(command, db=r"jobsearch.db"):
+    conn = create_connection(db)
+    c = conn.cursor()
+    
+    c.execute(command)
+    
+    res = c.fetchall()
+    
+    conn.commit()
+    conn.close()
+    
+    return res
 
 
 if __name__ == '__main__':
