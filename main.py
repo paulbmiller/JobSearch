@@ -4,8 +4,11 @@ functions to store the data and access it.
 """
 
 import sqlite3
+import math
 from sqlite3 import Error
 from sqlite3 import IntegrityError
+from datetime import datetime
+import numpy as np
 
 
 def create_connection(db_file):
@@ -160,6 +163,43 @@ def add_offline_test(application_id, date, db=r"jobsearch.db"):
 def add_rejection(application_id, date, db=r"jobsearch.db"):
     add_event(6, application_id, date, db)
     set_application_status(application_id, 3, db)
+
+
+def time_to_reject(application_id, db=r"jobsearch.db"):
+    res = exec_sql(
+        """SELECT applications.date, events.date FROM applications
+        JOIN events ON events.application_id = applications.id
+        JOIN event_types ON event_types.id = events.event_type
+        WHERE event_types.description = 'REJECTED'
+            AND applications.id = {};""".format(application_id),
+        db=db)
+    
+    if len(res) > 0:
+        apply_date = datetime.strptime(res[0][0], '%Y-%m-%d')
+        reject_date = datetime.strptime(res[0][1], '%Y-%m-%d')
+        return (reject_date - apply_date).days
+        
+    else:
+        return None
+
+
+def stats_rejections(db=r"jobsearch.db"):
+    res = exec_sql("""SELECT id FROM applications;""")
+    
+    res = [el[0] for el in res]
+    
+    reject_times = [time_to_reject(app_id) for app_id in res]
+    reject_times = np.array(
+        [time for time in reject_times if time])
+    
+    stats = (reject_times.mean(), reject_times.std(), reject_times.max())
+    
+    print("Rejection stats")
+    print("Average : {:.2f}".format(stats[0]))
+    print("Standard deviation : {:.2f}".format(stats[1]))
+    print("Max : {}".format(stats[2]))
+    
+    return stats
 
 
 def exec_sql(command, db=r"jobsearch.db"):
