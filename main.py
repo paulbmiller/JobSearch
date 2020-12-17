@@ -9,6 +9,7 @@ from sqlite3 import Error
 from sqlite3 import IntegrityError
 from datetime import datetime
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def create_connection(db_file):
@@ -75,57 +76,31 @@ def get_application(company_name, db=r"jobsearch.db"):
     Note : SQL's UPPER function does not do change the é character, but
     Python's built-in upper does.
     """
-    conn = create_connection(db)
-    c = conn.cursor()
+    return exec_sql("""SELECT applications.id, date, description, name
+                    FROM applications
+                    JOIN companies ON applications.company_id = companies.id
+                    WHERE UPPER(name) LIKE '%{}%'
+                    ORDER BY date ASC""".format(company_name.upper()))
+
+
+def get_application_from_id(application_id, db=r"jobsearch.db"):
+    app = exec_sql("""SELECT * FROM applications WHERE id = {};""".format(
+        application_id))
     
-    c.execute("""SELECT applications.id, date, description, name
-              FROM applications
-              JOIN companies ON applications.company_id = companies.id
-              WHERE UPPER(name) LIKE '%{}%'
-              ORDER BY date ASC""".format(company_name.upper()))
-              
-    res = c.fetchall()
-              
-    conn.close()
-    
-    return res
-    
+    return app[0]
+
 
 def set_application_status(application_id, status, db=r"jobsearch.db"):
-    conn = create_connection(db)
-    c = conn.cursor()
-    
-    c.execute("""UPDATE applications SET status = {}
-              WHERE id = {}""".format(status, application_id))
-    
-    conn.commit()
-    conn.close()
+    exec_sql("""UPDATE applications SET status = {}
+             WHERE id = {}""".format(status, application_id))
 
 
 def get_applications(db=r"jobsearch.db"):
-    conn = create_connection(db)
-    c = conn.cursor()
-    
-    c.execute("""SELECT * FROM applications ORDER BY date ASC;""")
-    
-    res = c.fetchall()
-    
-    conn.close()
-    
-    return res
+    return exec_sql("""SELECT * FROM applications ORDER BY date ASC;""")
 
 
 def get_event_types(db=r"jobsearch.db"):
-    conn = create_connection(db)
-    c = conn.cursor()
-    
-    c.execute("""SELECT * FROM event_types;""")
-    
-    res = c.fetchall()
-    
-    conn.close()
-    
-    return res
+    return exec_sql("""SELECT * FROM event_types;""")
 
 
 def add_event(event_type_id, application_id, date, db=r"jobsearch.db"):
@@ -183,21 +158,56 @@ def time_to_reject(application_id, db=r"jobsearch.db"):
         return None
 
 
+def plot_rejections(dates):
+    for date in dates.keys():
+        dates[date] = sum(dates[date])/len(dates[date])
+    
+    x, y = zip(*sorted(dates.items()))
+    
+    plt.plot(x, y)
+    plt.show()
+
+
 def stats_rejections(db=r"jobsearch.db"):
     res = exec_sql("""SELECT id FROM applications;""")
     
     res = [el[0] for el in res]
     
-    reject_times = [time_to_reject(app_id) for app_id in res]
-    reject_times = np.array(
-        [time for time in reject_times if time])
+    max_time = 0
+    max_app_id = None
+    reject_times = []
+    # Dictionary containing dates to datetime objects of rejection times
+    dates = {}
     
-    stats = (reject_times.mean(), reject_times.std(), reject_times.max())
+    for app_id in res:
+        date = datetime.strptime(get_application_from_id(app_id, db)[1],
+                                 '%Y-%m-%d')
+        time = time_to_reject(app_id)
+        reject_times.append(time)
+        if time:
+            if time > max_time:
+                max_time = time
+                max_app_id = app_id
+            if date in dates.keys():
+                dates[date].append(time)
+            else:
+                dates[date] = [time]
     
-    print("Rejection stats")
+    reject_times = np.array([time for time in reject_times if time])
+    
+    max_time = reject_times.max()
+    
+    stats = (reject_times.mean(), reject_times.std(), reject_times.max(),
+             max_app_id)
+    
+    print("{}/{} Rejection stats".format(len(reject_times), len(res)))
     print("Average : {:.2f}".format(stats[0]))
     print("Standard deviation : {:.2f}".format(stats[1]))
     print("Max : {}".format(stats[2]))
+    print("Application with max time : {}".format(
+        get_application_from_id(max_app_id)))
+    
+    plot_rejections(dates)
     
     return stats
 
@@ -230,7 +240,7 @@ if __name__ == '__main__':
         company_id integer,
         internship integer NOT NULL,
         city text NOT NULL,
-        status text NOT NULL,
+        status integer NOT NULL,
         link text NOT NULL,
         platform text NOT NULL,
         FOREIGN KEY (company_id) REFERENCES companies(id)
