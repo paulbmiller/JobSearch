@@ -4,7 +4,6 @@ functions to store the data and access it.
 """
 
 import sqlite3
-import math
 from sqlite3 import Error
 from sqlite3 import IntegrityError
 from datetime import datetime
@@ -84,8 +83,11 @@ def get_application(company_name, db=r"jobsearch.db"):
 
 
 def get_application_from_id(application_id, db=r"jobsearch.db"):
-    app = exec_sql("""SELECT * FROM applications WHERE id = {};""".format(
-        application_id))
+    app = exec_sql("""SELECT * FROM applications 
+                   JOIN companies  ON applications.company_id = companies.id
+                   WHERE applications.id = {};
+                   """.format(
+                   application_id))
     
     return app[0]
 
@@ -117,22 +119,27 @@ def add_event(event_type_id, application_id, date, db=r"jobsearch.db"):
 
 def add_video_call(application_id, date, db=r"jobsearch.db"):
     add_event(1, application_id, date, db)
+    set_application_status(application_id, 2, db)
 
 
 def add_phone_call(application_id, date, db=r"jobsearch.db"):
     add_event(2, application_id, date, db)
+    set_application_status(application_id, 2, db)
 
 
 def add_online_test(application_id, date, db=r"jobsearch.db"):
     add_event(3, application_id, date, db)
+    set_application_status(application_id, 2, db)
 
 
 def add_interview(application_id, date, db=r"jobsearch.db"):
     add_event(4, application_id, date, db)
+    set_application_status(application_id, 2, db)
 
 
 def add_offline_test(application_id, date, db=r"jobsearch.db"):
     add_event(5, application_id, date, db)
+    set_application_status(application_id, 2, db)
 
 
 def add_rejection(application_id, date, db=r"jobsearch.db"):
@@ -140,22 +147,33 @@ def add_rejection(application_id, date, db=r"jobsearch.db"):
     set_application_status(application_id, 3, db)
 
 
-def time_to_reject(application_id, db=r"jobsearch.db"):
+def add_ask_more_info(application_id, date, db=r"jobsearch.db"):
+    add_event(7, application_id, date, db)
+    set_application_status(application_id, 2, db)
+
+
+def time_to_respond(application_id, ignore_ongoing=True, db=r"jobsearch.db"):
     res = exec_sql(
         """SELECT applications.date, events.date FROM applications
         JOIN events ON events.application_id = applications.id
         JOIN event_types ON event_types.id = events.event_type
-        WHERE event_types.description = 'REJECTED'
-            AND applications.id = {};""".format(application_id),
+        WHERE applications.id = {}
+        ORDER BY events.date ASC;""".format(application_id),
         db=db)
     
     if len(res) > 0:
         apply_date = datetime.strptime(res[0][0], '%Y-%m-%d')
-        reject_date = datetime.strptime(res[0][1], '%Y-%m-%d')
-        return (reject_date - apply_date).days
+        response_date = datetime.strptime(res[0][1], '%Y-%m-%d')
+        return (response_date - apply_date).days
         
     else:
-        return None
+        if ignore_ongoing:
+            return None
+        else:
+            today_dt = datetime.today()
+            apply_date = datetime.strptime(
+                get_application_from_id(application_id)[1],'%Y-%m-%d')
+            return (today_dt - apply_date).days
 
 
 def plot_rejections(dates):
@@ -168,7 +186,7 @@ def plot_rejections(dates):
     plt.show()
 
 
-def stats_rejections(db=r"jobsearch.db"):
+def stats_rejections(ignore_ongoing=True, db=r"jobsearch.db"):
     res = exec_sql("""SELECT id FROM applications;""")
     
     res = [el[0] for el in res]
@@ -182,7 +200,7 @@ def stats_rejections(db=r"jobsearch.db"):
     for app_id in res:
         date = datetime.strptime(get_application_from_id(app_id, db)[1],
                                  '%Y-%m-%d')
-        time = time_to_reject(app_id)
+        time = time_to_respond(app_id, ignore_ongoing)
         reject_times.append(time)
         if time:
             if time > max_time:
@@ -224,6 +242,60 @@ def exec_sql(command, db=r"jobsearch.db"):
     conn.close()
     
     return res
+
+
+def get_events(ignore_rejected=False, ignore_rejections=True,
+               db=r"jobsearch.db"):
+    command = """SELECT
+        applications.id,
+        events.id,
+        applications.description,
+        applications.city,
+        companies.name,
+        events.date,
+        event_types.description
+        FROM events
+        JOIN event_types ON event_types.id = event_type
+        JOIN applications ON applications.id = events.application_id
+        JOIN companies ON companies.id = applications.company_id"""
+    
+    if ignore_rejected:
+        command += """ WHERE applications.status != 3"""
+        if ignore_rejections:
+            command += """ AND events.event_type != 6"""
+        command += ";"
+        
+    else:
+        if ignore_rejections:
+            command += """ WHERE events.event_type != 6"""
+        command += ";"
+    
+    res = exec_sql(command)
+    
+    return res
+
+
+def get_formatted_events(ignore_rejected=False, ignore_rejections=True,
+                         db=r"jobsearch.db"):
+    res = get_events(ignore_rejected, ignore_rejections, db)
+    
+    output = ""
+    
+    for event in res:
+        output += 'Application id : {}\n'.format(event[0])
+        output += 'Event id : {}\n'.format(event[1])
+        output += 'Desc : {}\n'.format(event[2])
+        output += 'City : {}\n'.format(event[3])
+        output += 'Company : {}\n'.format(event[4])
+        output += 'Date : {}\n'.format(event[5])
+        output += 'Event type : {}\n'.format(event[6])
+        output += '\n'
+    
+    print(output)
+
+
+def get_running_apps():
+    get_formatted_events(True)
 
 
 if __name__ == '__main__':
@@ -309,6 +381,12 @@ if __name__ == '__main__':
     try:
         c.execute("""INSERT INTO event_types (id, description)
                   VALUES (6, 'REJECTED');""")
+    except IntegrityError:
+        pass
+    
+    try:
+        c.execute("""INSERT INTO event_types (id, description)
+                  VALUES (7, 'ASK MORE INFO');""")
     except IntegrityError:
         pass
     
