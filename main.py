@@ -152,6 +152,11 @@ def add_ask_more_info(application_id, date, db=r"jobsearch.db"):
     set_application_status(application_id, 2, db)
 
 
+def add_offer(application_id, date, db=r"jobsearch.db"):
+    add_event(8, application_id, date, db)
+    set_application_status(application_id, 2 ,db)
+
+
 def time_to_respond(application_id, ignore_ongoing=True, db=r"jobsearch.db"):
     res = exec_sql(
         """SELECT applications.date, events.date FROM applications
@@ -387,6 +392,12 @@ if __name__ == '__main__':
     try:
         c.execute("""INSERT INTO event_types (id, description)
                   VALUES (7, 'ASK MORE INFO');""")
+    except IntegrityError:
+        pass
+    
+    try:
+        c.execute("""INSERT INTO event_types (id, description)
+                  VALUES (8, 'OFFER');""")
     except IntegrityError:
         pass
     
