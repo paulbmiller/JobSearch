@@ -40,8 +40,9 @@ def create_table(conn, create_table_sql):
         print(e)
 
 
-def new_application(date, description, company_name, city, internship,
-                    link='', status=1, platform='LinkedIn', db=r"jobsearch.db"):
+def new_application(description, company_name, city, internship,
+                    date=datetime.now().strftime('%Y-%m-%d'), link='',
+                    status=1, platform='LinkedIn', db=r"jobsearch.db"):
     """
     Add a row to the ´applications´ table. Date format is YYYY-MM-DD.
     """
@@ -105,7 +106,8 @@ def get_event_types(db=r"jobsearch.db"):
     return exec_sql("""SELECT * FROM event_types;""")
 
 
-def add_event(event_type_id, application_id, date, db=r"jobsearch.db"):
+def add_event(event_type_id, application_id,
+              date=datetime.now().strftime('%Y-%m-%d'), db=r"jobsearch.db"):
     conn = create_connection(db)
     c = conn.cursor()
     
@@ -117,42 +119,50 @@ def add_event(event_type_id, application_id, date, db=r"jobsearch.db"):
     conn.close()
 
 
-def add_video_call(application_id, date, db=r"jobsearch.db"):
+def add_video_call(application_id, date=datetime.now().strftime('%Y-%m-%d'),
+                   db=r"jobsearch.db"):
     add_event(1, application_id, date, db)
     set_application_status(application_id, 2, db)
 
 
-def add_phone_call(application_id, date, db=r"jobsearch.db"):
+def add_phone_call(application_id, date=datetime.now().strftime('%Y-%m-%d'),
+                   db=r"jobsearch.db"):
     add_event(2, application_id, date, db)
     set_application_status(application_id, 2, db)
 
 
-def add_online_test(application_id, date, db=r"jobsearch.db"):
+def add_online_test(application_id, date=datetime.now().strftime('%Y-%m-%d'),
+                    db=r"jobsearch.db"):
     add_event(3, application_id, date, db)
     set_application_status(application_id, 2, db)
 
 
-def add_interview(application_id, date, db=r"jobsearch.db"):
+def add_interview(application_id, date=datetime.now().strftime('%Y-%m-%d'),
+                  db=r"jobsearch.db"):
     add_event(4, application_id, date, db)
     set_application_status(application_id, 2, db)
 
 
-def add_offline_test(application_id, date, db=r"jobsearch.db"):
+def add_offline_test(application_id, date=datetime.now().strftime('%Y-%m-%d'),
+                     db=r"jobsearch.db"):
     add_event(5, application_id, date, db)
     set_application_status(application_id, 2, db)
 
 
-def add_rejection(application_id, date, db=r"jobsearch.db"):
+def add_rejection(application_id, date=datetime.now().strftime('%Y-%m-%d'),
+                  db=r"jobsearch.db"):
     add_event(6, application_id, date, db)
     set_application_status(application_id, 3, db)
 
 
-def add_ask_more_info(application_id, date, db=r"jobsearch.db"):
+def add_ask_more_info(application_id, date=datetime.now().strftime('%Y-%m-%d'),
+                      db=r"jobsearch.db"):
     add_event(7, application_id, date, db)
     set_application_status(application_id, 2, db)
 
 
-def add_offer(application_id, date, db=r"jobsearch.db"):
+def add_offer(application_id, date=datetime.now().strftime('%Y-%m-%d'),
+              db=r"jobsearch.db"):
     add_event(8, application_id, date, db)
     set_application_status(application_id, 2 ,db)
 
