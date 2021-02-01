@@ -287,6 +287,8 @@ def get_events(ignore_rejected=False, ignore_rejections=True,
     
     res = exec_sql(command)
     
+    res.sort(key=lambda x: x[5])
+    
     return res
 
 
