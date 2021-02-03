@@ -76,7 +76,7 @@ def get_application(company_name, db=r"jobsearch.db"):
     Note : SQL's UPPER function does not do change the é character, but
     Python's built-in upper does.
     """
-    return exec_sql("""SELECT applications.id, date, description, name
+    return exec_sql("""SELECT applications.id, date, description, name, link
                     FROM applications
                     JOIN companies ON applications.company_id = companies.id
                     WHERE UPPER(name) LIKE '%{}%'
@@ -86,11 +86,37 @@ def get_application(company_name, db=r"jobsearch.db"):
 def get_application_from_id(application_id, db=r"jobsearch.db"):
     app = exec_sql("""SELECT * FROM applications 
                    JOIN companies  ON applications.company_id = companies.id
+                   JOIN status ON applications.status = status.id
                    WHERE applications.id = {};
                    """.format(
                    application_id))
     
     return app[0]
+
+
+def app_details(application_id, db=r"jobsearch.db"):
+    app_list = list(get_application_from_id(application_id, db))
+    
+    # Delete unwanted values
+    del app_list[3]
+    del app_list[5]
+    del app_list[7]
+    del app_list[8]
+    
+    # Yes and no for internship instead of 1 and 0
+    app_list[3] = 'Yes' if app_list[3] == 1 else 'No'
+    
+    output = 'Application id: {}\n'
+    output += 'Date of application: {}\n'
+    output += 'Description: {}\n'
+    output += 'Is internship: {}\n'
+    output += 'City: {}\n'
+    output += 'Link: {}\n'
+    output += 'Platform: {}\n'
+    output += 'Company name: {}\n'
+    output += 'Status: {}\n'
+    
+    print(output.format(*app_list))
 
 
 def set_application_status(application_id, status, db=r"jobsearch.db"):
