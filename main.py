@@ -71,16 +71,24 @@ def new_application(description, company_name, city, internship,
     conn.close()
     
 
-def get_application(company_name, db=r"jobsearch.db"):
+def get_application(company_name, ignore_rejected=True, db=r"jobsearch.db"):
     """
     Note : SQL's UPPER function does not do change the é character, but
     Python's built-in upper does.
     """
-    return exec_sql("""SELECT applications.id, date, description, name, link
-                    FROM applications
-                    JOIN companies ON applications.company_id = companies.id
-                    WHERE UPPER(name) LIKE '%{}%'
-                    ORDER BY date ASC""".format(company_name.upper()))
+    if not ignore_rejected:
+        return exec_sql("""SELECT applications.id, date, description, name, link
+                        FROM applications
+                        JOIN companies ON applications.company_id = companies.id
+                        WHERE UPPER(name) LIKE '%{}%'
+                        ORDER BY date ASC""".format(company_name.upper()))
+                        
+    else:
+        return exec_sql("""SELECT applications.id, date, description, name, link
+                        FROM applications
+                        JOIN companies ON applications.company_id = companies.id
+                        WHERE UPPER(name) LIKE '%{}%' AND status != 3
+                        ORDER BY date ASC""".format(company_name.upper()))
 
 
 def get_application_from_id(application_id, db=r"jobsearch.db"):
