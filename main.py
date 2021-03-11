@@ -20,7 +20,6 @@ def create_connection(db_file):
     conn = None
     try:
         conn = sqlite3.connect(db_file)
-        return conn
     except Error as e:
         print(e)
 
@@ -251,6 +250,7 @@ def stats_rejections(ignore_ongoing=True, db=r"jobsearch.db"):
                                  '%Y-%m-%d')
         time = time_to_respond(app_id, ignore_ongoing)
         reject_times.append(time)
+        
         if time:
             if time > max_time:
                 max_time = time
@@ -324,6 +324,41 @@ def get_events(ignore_rejected=False, ignore_rejections=True,
     res.sort(key=lambda x: x[5])
     
     return res
+
+
+def get_app_events(application_id, db=r"jobsearch.db"):
+    command = """SELECT
+        applications.id,
+        events.id,
+        applications.description,
+        applications.date,
+        applications.city,
+        companies.name,
+        events.date,
+        event_types.description
+        FROM events
+        JOIN event_types ON event_types.id = event_type
+        JOIN applications ON applications.id = events.application_id
+        JOIN companies ON companies.id = applications.company_id
+        WHERE applications.id = {};""".format(application_id)
+        
+    res = exec_sql(command)
+    
+    if len(res) < 1:
+        print("No events for application with id {}".format(application_id))
+    else:
+        res.sort(key=lambda x: x[5])
+        
+        print("Application id: {}".format(res[0][0]))
+        print("Application description: {}".format(res[0][2]))
+        print("Date of application: {}".format(res[0][3]))
+        print("City: {}".format(res[0][4]))
+        print("Company: {}".format(res[0][5]))
+        
+        for event in res:
+            print("Event id: {}".format(event[1]))
+            print("Event date: {}".format(event[6]))
+            print("Event: {}".format(event[7]))
 
 
 def get_formatted_events(ignore_rejected=False, ignore_rejections=True,
